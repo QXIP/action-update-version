@@ -10,11 +10,12 @@ const run = async () => {
     const root = process.env.GITHUB_WORKSPACE as string;
     const author = process.env.GITHUB_ACTOR as string;
     const email = `${ author }@users.noreply.github.com`;
-    const version = git.execSync('git rev-parse HEAD').toString().trim()
+    const hash = git.execSync('git rev-parse HEAD').toString().trim()
+    const tag = git.execSync('git describe --tags --abbrev=0').toString().trim();
     const regex = new RegExp(/\bversion\s*['"]\s*.*\s*['"]/i);
     const branch = core.getInput('branch');
 
-    core.info(`📝 Last commit hash is '${version}'`);
+    core.info(`📝 Last commit hash is '${hash}'`);
 
     // Go through every 'fxmanifest.lua' file in the repository and update the version number if the
     // author is "Asaayu" and the version number matches the regular expression.
@@ -46,7 +47,7 @@ const run = async () => {
             }
 
             // Update the version number
-            const newFileContent = fileContent.replace(regex, `version '${version}'`);
+            const newFileContent = fileContent.replace(regex, `version '${tag}@${hash}'`);
             fs.writeFileSync(filePath, newFileContent);
             core.info('😀 Updating version number');
         }
@@ -59,7 +60,7 @@ const run = async () => {
     core.info('✔️ Committing file changes');
     await exec.exec('git', ['config', '--global', 'user.name', author]);
     await exec.exec('git', ['config', '--global', 'user.email', email]);
-    await exec.exec('git', ['commit', '-am', `Updated fxmanifest.lua versions to '${version}'`]);
+    await exec.exec('git', ['commit', '-am', `Updated fxmanifest.lua versions to '${tag}@${hash}'`]);
     await exec.exec('git', ['push', '-u', 'origin', `HEAD:${branch}`]);
 };
 
