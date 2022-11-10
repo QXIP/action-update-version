@@ -52,12 +52,12 @@ const run = () => __awaiter(void 0, void 0, void 0, function* () {
     const author = process.env.GITHUB_ACTOR;
     const email = `${author}@users.noreply.github.com`;
     const version = child_process_1.default.execSync('git rev-parse HEAD').toString().trim();
-    const regex = new RegExp(core.getInput('version-regexp'));
+    const regex = new RegExp(/version\s*['"]\s*.*\s*['"]/i);
     const branch = core.getInput('branch');
     core.info('Setting up git');
     yield exec.exec('git', ['config', '--global', 'user.name', author]);
     yield exec.exec('git', ['config', '--global', 'user.email', email]);
-    core.info('Last commit hash is ' + version);
+    core.info(`Last commit hash is '${version}'`);
     // Go through every 'fxmanifest.lua' file in the repository and update the version number if the
     // author is "Asaayu" and the version number matches the regular expression.
     // Using glob to find all files in the repository
