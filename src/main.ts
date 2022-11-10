@@ -2,7 +2,8 @@ import path from 'path';
 import fs from 'fs';
 import * as core from '@actions/core';
 import * as exec from '@actions/exec';
-import glob from "glob";
+import util from 'util';
+const glob = util.promisify(require('glob'));
 import git from 'child_process';
 
 const run = async () => {
@@ -11,7 +12,7 @@ const run = async () => {
     const author = process.env.GITHUB_ACTOR as string;
     const email = `${ author }@users.noreply.github.com`;
     const version = git.execSync('git rev-parse HEAD').toString().trim()
-    const regex = new RegExp(/version\s*['"]\s*.*\s*['"]/i);
+    const regex = new RegExp(/\bversion\s*['"]\s*.*\s*['"]/i);
     const branch = core.getInput('branch');
 
     core.info(`📝 Last commit hash is '${version}'`);
@@ -46,18 +47,18 @@ const run = async () => {
             }
 
             // Update the version number
-            const newFileContent = fileContent.replace(regex, version);
+            const newFileContent = fileContent.replace(regex, `version '${version}'`);
             fs.writeFileSync(filePath, newFileContent);
             core.info('😀 Updating version number');
         }
+    }).then(async () => {
+        // Commit the changes
+        core.info('✔️ Committing file changes');
+        await exec.exec('git', ['config', '--global', 'user.name', author]);
+        await exec.exec('git', ['config', '--global', 'user.email', email]);
+        await exec.exec('git', ['commit', '-am', `Updated fxmanifest.lua versions to '${version}'`]);
+        await exec.exec('git', ['push', '-u', 'origin', `HEAD:${branch}`]);
     });
-
-    // Commit the changes
-    core.info('✔️ Committing file changes');
-    await exec.exec('git', ['config', '--global', 'user.name', author]);
-    await exec.exec('git', ['config', '--global', 'user.email', email]);
-    await exec.exec('git', ['commit', '-am', `Updated fxmanifest.lua versions to '${version}'`]);
-    await exec.exec('git', ['push', '-u', 'origin', `HEAD:${branch}`]);
 };
 
 run()

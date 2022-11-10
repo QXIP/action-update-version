@@ -43,7 +43,8 @@ const path_1 = __importDefault(__webpack_require__(622));
 const fs_1 = __importDefault(__webpack_require__(747));
 const core = __importStar(__webpack_require__(186));
 const exec = __importStar(__webpack_require__(514));
-const glob_1 = __importDefault(__webpack_require__(957));
+const util_1 = __importDefault(__webpack_require__(669));
+const glob = util_1.default.promisify(__webpack_require__(957));
 const child_process_1 = __importDefault(__webpack_require__(129));
 const run = () => __awaiter(void 0, void 0, void 0, function* () {
     core.info('🖨️ Setting input and environment variables');
@@ -51,13 +52,13 @@ const run = () => __awaiter(void 0, void 0, void 0, function* () {
     const author = process.env.GITHUB_ACTOR;
     const email = `${author}@users.noreply.github.com`;
     const version = child_process_1.default.execSync('git rev-parse HEAD').toString().trim();
-    const regex = new RegExp(/version\s*['"]\s*.*\s*['"]/i);
+    const regex = new RegExp(/\bversion\s*['"]\s*.*\s*['"]/i);
     const branch = core.getInput('branch');
     core.info(`📝 Last commit hash is '${version}'`);
     // Go through every 'fxmanifest.lua' file in the repository and update the version number if the
     // author is "Asaayu" and the version number matches the regular expression.
     // Using glob to find all files in the repository
-    glob_1.default("**/fxmanifest.lua", { cwd: root }, (err, files) => __awaiter(void 0, void 0, void 0, function* () {
+    glob("**/fxmanifest.lua", { cwd: root }, (err, files) => __awaiter(void 0, void 0, void 0, function* () {
         if (err) {
             throw err;
         }
@@ -80,17 +81,18 @@ const run = () => __awaiter(void 0, void 0, void 0, function* () {
                 continue;
             }
             // Update the version number
-            const newFileContent = fileContent.replace(regex, version);
+            const newFileContent = fileContent.replace(regex, `version '${version}'`);
             fs_1.default.writeFileSync(filePath, newFileContent);
             core.info('😀 Updating version number');
         }
+    })).then(() => __awaiter(void 0, void 0, void 0, function* () {
+        // Commit the changes
+        core.info('✔️ Committing file changes');
+        yield exec.exec('git', ['config', '--global', 'user.name', author]);
+        yield exec.exec('git', ['config', '--global', 'user.email', email]);
+        yield exec.exec('git', ['commit', '-am', `Updated fxmanifest.lua versions to '${version}'`]);
+        yield exec.exec('git', ['push', '-u', 'origin', `HEAD:${branch}`]);
     }));
-    // Commit the changes
-    core.info('✔️ Committing file changes');
-    yield exec.exec('git', ['config', '--global', 'user.name', author]);
-    yield exec.exec('git', ['config', '--global', 'user.email', email]);
-    yield exec.exec('git', ['commit', '-am', `Updated fxmanifest.lua versions to '${version}'`]);
-    yield exec.exec('git', ['push', '-u', 'origin', `HEAD:${branch}`]);
 });
 run()
     .then(() => core.info('✅ Updated fxmanifest.lua versions successfully'))
