@@ -2,8 +2,7 @@ import path from 'path';
 import fs from 'fs';
 import * as core from '@actions/core';
 import * as exec from '@actions/exec';
-import util from 'util';
-const glob = util.promisify(require('glob'));
+import glob from 'glob';
 import git from 'child_process';
 
 const run = async () => {
@@ -21,7 +20,7 @@ const run = async () => {
     // author is "Asaayu" and the version number matches the regular expression.
 
     // Using glob to find all files in the repository
-    await glob("**/fxmanifest.lua", { cwd: root }, async (err: any, files: any) => {
+    glob("**/fxmanifest.lua", { cwd: root }, async (err: any, files: any) => {
         if (err) { throw err; }
 
         // Loop through all files
@@ -51,14 +50,17 @@ const run = async () => {
             fs.writeFileSync(filePath, newFileContent);
             core.info('😀 Updating version number');
         }
-    }).then(async () => {
-        // Commit the changes
-        core.info('✔️ Committing file changes');
-        await exec.exec('git', ['config', '--global', 'user.name', author]);
-        await exec.exec('git', ['config', '--global', 'user.email', email]);
-        await exec.exec('git', ['commit', '-am', `Updated fxmanifest.lua versions to '${version}'`]);
-        await exec.exec('git', ['push', '-u', 'origin', `HEAD:${branch}`]);
     });
+
+    // Wait for the files to be updated
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    // Commit the changes
+    core.info('✔️ Committing file changes');
+    await exec.exec('git', ['config', '--global', 'user.name', author]);
+    await exec.exec('git', ['config', '--global', 'user.email', email]);
+    await exec.exec('git', ['commit', '-am', `Updated fxmanifest.lua versions to '${version}'`]);
+    await exec.exec('git', ['push', '-u', 'origin', `HEAD:${branch}`]);
 };
 
 run()

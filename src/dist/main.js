@@ -40,78 +40,82 @@ var path_1 = require("path");
 var fs_1 = require("fs");
 var core = require("@actions/core");
 var exec = require("@actions/exec");
-var glob_1 = require("glob");
+var glob = require('glob');
 var child_process_1 = require("child_process");
 var run = function () { return __awaiter(void 0, void 0, void 0, function () {
-    var root, tag, author, email, version, regex, branch;
+    var root, author, email, version, regex, branch;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
-                core.info('Setting input and environment variables');
+                core.info('🖨️ Setting input and environment variables');
                 root = process.env.GITHUB_WORKSPACE;
-                tag = process.env.GITHUB_REF.replace('refs/tags/', '');
                 author = process.env.GITHUB_ACTOR;
                 email = author + "@users.noreply.github.com";
                 version = child_process_1["default"].execSync('git rev-parse HEAD').toString().trim();
-                regex = new RegExp(core.getInput('version-regexp'));
+                regex = new RegExp(/\bversion\s*['"]\s*.*\s*['"]/i);
                 branch = core.getInput('branch');
-                core.info('Setting up git');
-                return [4 /*yield*/, exec.exec('git', ['config', '--global', 'user.name', author])];
-            case 1:
-                _a.sent();
-                return [4 /*yield*/, exec.exec('git', ['config', '--global', 'user.email', email])];
-            case 2:
-                _a.sent();
-                core.info('Last commit hash is ' + version);
+                core.info("\uD83D\uDCDD Last commit hash is '" + version + "'");
                 // Go through every 'fxmanifest.lua' file in the repository and update the version number if the
                 // author is "Asaayu" and the version number matches the regular expression.
                 // Using glob to find all files in the repository
-                glob_1["default"]("**/fxmanifest.lua", { cwd: root }, function (err, files) { return __awaiter(void 0, void 0, void 0, function () {
-                    var _i, files_1, file, filePath, fileContent, authorMatch, versionMatch, newVersion, newFileContent;
-                    return __generator(this, function (_a) {
-                        if (err) {
-                            throw err;
-                        }
-                        // Loop through all files
-                        for (_i = 0, files_1 = files; _i < files_1.length; _i++) {
-                            file = files_1[_i];
-                            core.info("Checking '" + file + "'");
-                            filePath = path_1["default"].join(root, file);
-                            fileContent = fs_1["default"].readFileSync(filePath, 'utf8');
-                            authorMatch = fileContent.match(/author\s*['"]\s*Asaayu\s*['"]/i);
-                            if (!authorMatch) {
-                                core.info('Author is not "Asaayu", skipping');
-                                continue;
+                return [4 /*yield*/, glob("**/fxmanifest.lua", { cwd: root }, function (err, files) { return __awaiter(void 0, void 0, void 0, function () {
+                        var _i, files_1, file, filePath, fileContent, authorMatch, versionMatch, newFileContent;
+                        return __generator(this, function (_a) {
+                            if (err) {
+                                throw err;
                             }
-                            versionMatch = fileContent.match(regex);
-                            if (!versionMatch) {
-                                core.info('Version number does not match regular expression, skipping');
-                                continue;
+                            // Loop through all files
+                            for (_i = 0, files_1 = files; _i < files_1.length; _i++) {
+                                file = files_1[_i];
+                                core.info("\u231B Checking file '" + file + "'");
+                                filePath = path_1["default"].join(root, file);
+                                fileContent = fs_1["default"].readFileSync(filePath, 'utf8');
+                                authorMatch = fileContent.match(/author\s*['"]\s*Asaayu\s*['"]/i);
+                                if (!authorMatch) {
+                                    core.info('❌ Author is not "Asaayu", skipping');
+                                    continue;
+                                }
+                                versionMatch = fileContent.match(regex);
+                                if (!versionMatch) {
+                                    core.info('❌ Version number does not match regular expression, skipping');
+                                    continue;
+                                }
+                                newFileContent = fileContent.replace(regex, "version '" + version + "'");
+                                fs_1["default"].writeFileSync(filePath, newFileContent);
+                                core.info('😀 Updating version number');
                             }
-                            newVersion = tag.replace('v', '');
-                            newFileContent = fileContent.replace(regex, newVersion);
-                            fs_1["default"].writeFileSync(filePath, newFileContent);
-                        }
-                        return [2 /*return*/];
-                    });
-                }); });
-                // Commit the changes
-                core.info('Committing file changes');
-                return [4 /*yield*/, exec.exec('git', ['config', '--global', 'user.name', author])];
-            case 3:
-                _a.sent();
-                return [4 /*yield*/, exec.exec('git', ['config', '--global', 'user.email', email])];
-            case 4:
-                _a.sent();
-                return [4 /*yield*/, exec.exec('git', ['commit', '-am', version])];
-            case 5:
-                _a.sent();
-                return [4 /*yield*/, exec.exec('git', ['push', '-u', 'origin', "HEAD:" + branch])];
-            case 6:
+                            return [2 /*return*/];
+                        });
+                    }); }).then(function () { return __awaiter(void 0, void 0, void 0, function () {
+                        return __generator(this, function (_a) {
+                            switch (_a.label) {
+                                case 0:
+                                    // Commit the changes
+                                    core.info('✔️ Committing file changes');
+                                    return [4 /*yield*/, exec.exec('git', ['config', '--global', 'user.name', author])];
+                                case 1:
+                                    _a.sent();
+                                    return [4 /*yield*/, exec.exec('git', ['config', '--global', 'user.email', email])];
+                                case 2:
+                                    _a.sent();
+                                    return [4 /*yield*/, exec.exec('git', ['commit', '-am', "Updated fxmanifest.lua versions to '" + version + "'"])];
+                                case 3:
+                                    _a.sent();
+                                    return [4 /*yield*/, exec.exec('git', ['push', '-u', 'origin', "HEAD:" + branch])];
+                                case 4:
+                                    _a.sent();
+                                    return [2 /*return*/];
+                            }
+                        });
+                    }); })];
+            case 1:
+                // Go through every 'fxmanifest.lua' file in the repository and update the version number if the
+                // author is "Asaayu" and the version number matches the regular expression.
+                // Using glob to find all files in the repository
                 _a.sent();
                 return [2 /*return*/];
         }
     });
 }); };
 run()
-    .then(function () { return core.info('Updated fxmanifest.lua versions successfully'); })["catch"](function (error) { return core.setFailed(error.message); });
+    .then(function () { return core.info('✅ Updated fxmanifest.lua versions successfully'); })["catch"](function (error) { return core.setFailed(error.message); });
