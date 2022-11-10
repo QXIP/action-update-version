@@ -82,6 +82,7 @@ const run = () => __awaiter(void 0, void 0, void 0, function* () {
             // Update the version number
             const newFileContent = fileContent.replace(regex, version);
             fs_1.default.writeFileSync(filePath, newFileContent);
+            core.info('😀 Updating version number');
         }
     }));
     // Commit the changes

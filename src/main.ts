@@ -48,6 +48,7 @@ const run = async () => {
             // Update the version number
             const newFileContent = fileContent.replace(regex, version);
             fs.writeFileSync(filePath, newFileContent);
+            core.info('😀 Updating version number');
         }
     });
 
