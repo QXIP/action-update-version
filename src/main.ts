@@ -21,7 +21,7 @@ const run = async () => {
     // author is "Asaayu" and the version number matches the regular expression.
 
     // Using glob to find all files in the repository
-    glob("**/fxmanifest.lua", { cwd: root }, async (err: any, files: any) => {
+    await glob("**/fxmanifest.lua", { cwd: root }, async (err: any, files: any) => {
         if (err) { throw err; }
 
         // Loop through all files

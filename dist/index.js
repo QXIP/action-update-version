@@ -58,7 +58,7 @@ const run = () => __awaiter(void 0, void 0, void 0, function* () {
     // Go through every 'fxmanifest.lua' file in the repository and update the version number if the
     // author is "Asaayu" and the version number matches the regular expression.
     // Using glob to find all files in the repository
-    glob("**/fxmanifest.lua", { cwd: root }, (err, files) => __awaiter(void 0, void 0, void 0, function* () {
+    yield glob("**/fxmanifest.lua", { cwd: root }, (err, files) => __awaiter(void 0, void 0, void 0, function* () {
         if (err) {
             throw err;
         }
