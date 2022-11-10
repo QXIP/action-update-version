@@ -2,112 +2,69 @@ import path from 'path';
 import fs from 'fs';
 import * as core from '@actions/core';
 import * as exec from '@actions/exec';
-import * as github from '@actions/github';
-import YAML from 'yaml';
-
-const getParser = (file: string, options: { spacing: number }) => {
-  const extension = path.extname(file).replace('.', '');
-
-  switch (extension) {
-    case 'json':
-      return {
-        read: JSON.parse,
-        write: (data: any) => JSON.stringify(data, null, options.spacing),
-      };
-    case 'yaml':
-    case 'yml':
-      return {
-        read: YAML.parse,
-        write: (data: any) => YAML.stringify(data, { indent: options.spacing }),
-      };
-    default:
-      throw new Error(`Unsupported file extension "${extension}".\nTo add it you can simply submit a PR adding a new parser.`);
-  }
-};
+import glob from "glob";
+import git from 'child_process';
 
 const run = async () => {
-  core.info('Setting input and environment variables');
-  const root = process.env.GITHUB_WORKSPACE as string;
-  const tag = (process.env.GITHUB_REF as string).replace('refs/tags/', '');
-  const token = core.getInput('repo-token');
-  const regex = new RegExp(core.getInput('version-regexp'));
-  const files = core.getInput('files').replace(' ', '').split(',');
-  const message = core.getInput('commit-message');
-  const spacing = parseInt(core.getInput('spacing-level'), 10);
-  let branch = core.getInput('branch-name');
-  let author = core.getInput('author-name');
-  let email = core.getInput('author-email');
+    core.info('Setting input and environment variables');
+    const root = process.env.GITHUB_WORKSPACE as string;
+    const tag = (process.env.GITHUB_REF as string).replace('refs/tags/', '');
+    const author = process.env.GITHUB_ACTOR as string;
+    const email = `${ author }@users.noreply.github.com`;
+    const version = git.execSync('git rev-parse HEAD').toString().trim()
+    const regex = new RegExp(core.getInput('version-regexp'));
+    const branch = core.getInput('branch');
 
-  if (!token && !branch) {
-    throw new Error('Either repo-token or branch-name must be supplied.');
-  }
+    core.info('Setting up git');
+    await exec.exec('git', ['config', '--global', 'user.name', author]);
+    await exec.exec('git', ['config', '--global', 'user.email', email]);
 
-  if (token) {
-    core.info('Setting up Octokit and context');
-    const octokit = github.getOctokit(token);
-    const { owner, repo } = github.context.repo;
+    core.info('Last commit hash is ' + version);
 
-    core.info('Fetching repo task history');
-    const release = await octokit.repos.getReleaseByTag({ owner, repo, tag });
+    // Go through every 'fxmanifest.lua' file in the repository and update the version number if the
+    // author is "Asaayu" and the version number matches the regular expression.
 
-    if (release.data.tag_name !== tag) {
-      throw new Error(`Release with name "${tag}" was not found`);
-    }
+    // Using glob to find all files in the repository
+    glob("**/fxmanifest.lua", { cwd: root }, async (err: any, files: any) => {
+        if (err) { throw err; }
 
-    branch = release.data.target_commitish;
+        // Loop through all files
+        for (const file of files) {
+            core.info(`Checking '${file}'`);
 
-    if (!author && !email) {
-      core.info('Getting author and email from release information');
-      const username = release.data.author.login;
-      const user = await octokit.users.getByUsername({ username });
+            // Read the file
+            const filePath = path.join(root, file);
+            const fileContent = fs.readFileSync(filePath, 'utf8');
 
-      author = user.data.name;
-      email = user.data.email;
-      core.info(`👋 Nice to meet you ${author} (${email})!`);
-    }
-  } else {
-    core.info('Skipping getting the latest release since not "repo-token" was provided');
-  }
+            // Check if the author is "Asaayu" using a regular expression
+            const authorMatch = fileContent.match(/author\s*['"]\s*Asaayu\s*['"]/i);
+            if (!authorMatch) {
+                core.info('Author is not "Asaayu", skipping');
+                continue;
+            }
 
-  core.info(`Checking latest tag "${tag}" against input regexp`);
-  if (!regex.test(tag)) {
-    throw new Error(`RegExp could not be matched to latest tag "${tag}"`);
-  }
+            // Check if the version number matches the regular expression
+            const versionMatch = fileContent.match(regex);
+            if (!versionMatch) {
+                core.info('Version number does not match regular expression, skipping');
+                continue;
+            }
 
-  const version = (tag.match(regex) as string[])[0];
-  core.info(`Extracted new version "${version}" from "${tag}"`);
+            // Update the version number
+            const newVersion = tag.replace('v', '');
+            const newFileContent = fileContent.replace(regex, newVersion);
+            fs.writeFileSync(filePath, newFileContent);
+        }
+    });
 
-  // Forgive me for the unnecessary fanciness 🙏
-  core.info('Updating files version field');
-  const changed = files.reduce((change, file) => {
-    const dir = path.join(root, file);
-    const buffer = fs.readFileSync(dir, 'utf-8');
-    const parser = getParser(file, { spacing });
-    const content = parser.read(buffer);
-
-    if (content.version === version) {
-      core.info(`  - ${file}: Skip since equal versions`);
-      return change;
-    }
-
-    core.info(`  - ${file}: Update version from "${content.version}" to "${version}"`);
-    content.version = version;
-    fs.writeFileSync(dir, parser.write(content));
-    return true;
-  }, false);
-
-  if (!changed) {
-    core.info('Skipped commit since no files were changed');
-    return;
-  }
-
-  core.info('Committing file changes');
-  await exec.exec('git', ['config', '--global', 'user.name', author]);
-  await exec.exec('git', ['config', '--global', 'user.email', email]);
-  await exec.exec('git', ['commit', '-am', message.replace('%version%', version)]);
-  await exec.exec('git', ['push', '-u', 'origin', `HEAD:${branch}`]);
+    // Commit the changes
+    core.info('Committing file changes');
+    await exec.exec('git', ['config', '--global', 'user.name', author]);
+    await exec.exec('git', ['config', '--global', 'user.email', email]);
+    await exec.exec('git', ['commit', '-am', version]);
+    await exec.exec('git', ['push', '-u', 'origin', `HEAD:${branch}`]);
 };
 
 run()
-  .then(() => core.info('Updated files version successfully'))
-  .catch(error => core.setFailed(error.message));
+    .then(() => core.info('Updated fxmanifest.lua versions successfully'))
+    .catch(error => core.setFailed(error.message));
