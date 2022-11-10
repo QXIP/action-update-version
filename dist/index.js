@@ -46,18 +46,14 @@ const exec = __importStar(__webpack_require__(514));
 const glob_1 = __importDefault(__webpack_require__(957));
 const child_process_1 = __importDefault(__webpack_require__(129));
 const run = () => __awaiter(void 0, void 0, void 0, function* () {
-    core.info('Setting input and environment variables');
+    core.info('🖨️ Setting input and environment variables');
     const root = process.env.GITHUB_WORKSPACE;
-    const tag = process.env.GITHUB_REF.replace('refs/tags/', '');
     const author = process.env.GITHUB_ACTOR;
     const email = `${author}@users.noreply.github.com`;
     const version = child_process_1.default.execSync('git rev-parse HEAD').toString().trim();
     const regex = new RegExp(/version\s*['"]\s*.*\s*['"]/i);
     const branch = core.getInput('branch');
-    core.info('Setting up git');
-    yield exec.exec('git', ['config', '--global', 'user.name', author]);
-    yield exec.exec('git', ['config', '--global', 'user.email', email]);
-    core.info(`Last commit hash is '${version}'`);
+    core.info(`📝 Last commit hash is '${version}'`);
     // Go through every 'fxmanifest.lua' file in the repository and update the version number if the
     // author is "Asaayu" and the version number matches the regular expression.
     // Using glob to find all files in the repository
@@ -67,37 +63,36 @@ const run = () => __awaiter(void 0, void 0, void 0, function* () {
         }
         // Loop through all files
         for (const file of files) {
-            core.info(`Checking '${file}'`);
+            core.info(`⌛ Checking file '${file}'`);
             // Read the file
             const filePath = path_1.default.join(root, file);
             const fileContent = fs_1.default.readFileSync(filePath, 'utf8');
             // Check if the author is "Asaayu" using a regular expression
             const authorMatch = fileContent.match(/author\s*['"]\s*Asaayu\s*['"]/i);
             if (!authorMatch) {
-                core.info('Author is not "Asaayu", skipping');
+                core.info('❌ Author is not "Asaayu", skipping');
                 continue;
             }
             // Check if the version number matches the regular expression
             const versionMatch = fileContent.match(regex);
             if (!versionMatch) {
-                core.info('Version number does not match regular expression, skipping');
+                core.info('❌ Version number does not match regular expression, skipping');
                 continue;
             }
             // Update the version number
-            const newVersion = tag.replace('v', '');
-            const newFileContent = fileContent.replace(regex, newVersion);
+            const newFileContent = fileContent.replace(regex, version);
             fs_1.default.writeFileSync(filePath, newFileContent);
         }
     }));
     // Commit the changes
-    core.info('Committing file changes');
+    core.info('✔️ Committing file changes');
     yield exec.exec('git', ['config', '--global', 'user.name', author]);
     yield exec.exec('git', ['config', '--global', 'user.email', email]);
-    yield exec.exec('git', ['commit', '-am', version]);
+    yield exec.exec('git', ['commit', '-am', `Updated fxmanifest.lua versions to '${version}'`]);
     yield exec.exec('git', ['push', '-u', 'origin', `HEAD:${branch}`]);
 });
 run()
-    .then(() => core.info('Updated fxmanifest.lua versions successfully'))
+    .then(() => core.info('✅ Updated fxmanifest.lua versions successfully'))
     .catch(error => core.setFailed(error.message));
 
 
