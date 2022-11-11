@@ -51,13 +51,27 @@ const run = () => __awaiter(void 0, void 0, void 0, function* () {
     const author = process.env.GITHUB_ACTOR;
     const email = `${author}@users.noreply.github.com`;
     const hash = child_process_1.default.execSync('git rev-parse HEAD').toString().trim();
-    const tag = child_process_1.default.execSync('git describe --tags --abbrev=0').toString().trim();
     const regex = new RegExp(/\bversion\s*['"]\s*.*\s*['"]/i);
     const branch = core.getInput('branch');
+    // Output the last commit hash
     core.info(`📝 Last commit hash is '${hash}'`);
+    // Auto create a new tag incrementing the last number
+    let tag = child_process_1.default.execSync('git describe --tags --abbrev=0').toString().trim();
+    const tagParts = tag.split('.');
+    const lastPart = tagParts.pop();
+    if (lastPart) {
+        const newTag = tagParts.join('.') + '.' + (parseInt(lastPart) + 1);
+        core.info(`🔖 Creating new tag ${newTag}`);
+        child_process_1.default.execSync(`git tag ${newTag}`);
+        child_process_1.default.execSync(`git push origin ${newTag}`);
+        // Delete the old tag
+        core.info(`🔖 Deleting old tag ${tag}`);
+        child_process_1.default.execSync(`git tag -d ${tag}`);
+        child_process_1.default.execSync(`git push origin :refs/tags/${tag}`);
+        tag = newTag;
+    }
     // Go through every 'fxmanifest.lua' file in the repository and update the version number if the
     // author is "Asaayu" and the version number matches the regular expression.
-    // Using glob to find all files in the repository
     glob_1.default("**/fxmanifest.lua", { cwd: root }, (err, files) => __awaiter(void 0, void 0, void 0, function* () {
         if (err) {
             throw err;
