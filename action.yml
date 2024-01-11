@@ -1,5 +1,5 @@
-name: Update Files Version Field
-description: Update your files version field on new releases
+name: Update JS Package Version
+description: Update package.json version field on new releases
 author: qxip
 branding:
   color: blue
