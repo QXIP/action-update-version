@@ -2,9 +2,8 @@
    <h1>🏷 update-version</h1>
    <p>Update your files version field on new releases</p>
    <p align="center">
-    <img alt="GitHub Workflow Status" src="https://img.shields.io/github/workflow/status/pocket-apps/action-update-version/CI">
-    <img alt="GitHub release (latest by date)" src="https://img.shields.io/github/v/release/pocket-apps/action-update-version">
-    <img alt="GitHub" src="https://img.shields.io/github/license/pocket-apps/action-update-version">
+    <img alt="GitHub release (latest by date)" src="https://img.shields.io/github/v/release/qxip/action-update-version">
+    <img alt="GitHub" src="https://img.shields.io/github/license/qxip/action-update-version">
    </p>
 </div>
 
@@ -35,7 +34,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: pocket-apps/action-update-version@v1
+      - uses: qxip/action-update-version@v1
         with:
           files: 'package.json, app.yaml'
           version-regexp: '\d+.\d+.\d+'
@@ -69,4 +68,4 @@ author-email|Commit author email|*Release author email*
 
 ## 👋 Support
 
-If you find our work useful, you can [support our work](https://github.com/sponsors/pocket-apps) and win a burrito 🌯
+If you find our work useful, you can [support our work](https://github.com/sponsors/qxip) and win a burrito 🌯
